@@ -9,40 +9,43 @@ interface AnswerDisplayProps {
 }
 
 export function AnswerDisplay({ answer, visible }: AnswerDisplayProps) {
-  if (!visible || !answer) {
-    return null;
-  }
-
-  // Calculate text wrapping for long answers
-  const maxLineLength = 15; // Approximate characters per line that fit in window
-  const words = answer.split(' ');
-  const lines: string[] = [];
-  let currentLine = '';
-
-  words.forEach(word => {
-    if ((currentLine + word).length <= maxLineLength) {
-      currentLine += (currentLine ? ' ' : '') + word;
-    } else {
-      if (currentLine) {
-        lines.push(currentLine);
-      }
-      currentLine = word;
-    }
-  });
+  // Always show the blue background, but only show text when visible and answer exists
+  const showText = visible && !!answer;
   
-  if (currentLine) {
-    lines.push(currentLine);
-  }
+  // Calculate text wrapping for long answers (only when we have an answer)
+  let lines: string[] = [];
+  let fontSize = 0.15;
+  
+  if (answer) {
+    const maxLineLength = 15; // Approximate characters per line that fit in window
+    const words = answer.split(' ');
+    let currentLine = '';
 
-  // Calculate font size based on text length and number of lines
-  const baseFontSize = 0.15;
-  const lengthFactor = Math.min(1, 25 / answer.length);
-  const lineFactor = Math.min(1, 3 / lines.length);
-  const fontSize = baseFontSize * lengthFactor * lineFactor;
+    words.forEach(word => {
+      if ((currentLine + word).length <= maxLineLength) {
+        currentLine += (currentLine ? ' ' : '') + word;
+      } else {
+        if (currentLine) {
+          lines.push(currentLine);
+        }
+        currentLine = word;
+      }
+    });
+    
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+
+    // Calculate font size based on text length and number of lines
+    const baseFontSize = 0.15;
+    const lengthFactor = Math.min(1, 25 / answer.length);
+    const lineFactor = Math.min(1, 3 / lines.length);
+    fontSize = baseFontSize * lengthFactor * lineFactor;
+  }
 
   return (
     <group position={[0, -0.15, 1.45]} rotation={[0, 0, 0]}>
-      {/* Blue circular background for classic Magic 8 Ball appearance */}
+      {/* Blue circular background for classic Magic 8 Ball appearance - ALWAYS VISIBLE */}
       <mesh position={[0, 0.1, -0.05]}>
         <circleGeometry args={[0.6, 32]} />
         <meshBasicMaterial 
@@ -53,8 +56,8 @@ export function AnswerDisplay({ answer, visible }: AnswerDisplayProps) {
         />
       </mesh>
 
-      {/* Render each line of text using Text component */}
-      {lines.map((line, index) => (
+      {/* Render text only when showText is true */}
+      {showText && lines.map((line, index) => (
         <Text
           key={index}
           fontSize={fontSize}
@@ -73,7 +76,7 @@ export function AnswerDisplay({ answer, visible }: AnswerDisplayProps) {
         </Text>
       ))}
 
-      {/* Additional point lights for text illumination */}
+      {/* Additional point lights for text illumination - always present for consistent lighting */}
       <pointLight 
         position={[0, 0, 0.5]} 
         intensity={2} 

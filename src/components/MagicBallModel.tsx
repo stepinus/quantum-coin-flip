@@ -126,7 +126,7 @@ export function MagicBallModel({ isShaking, currentAnswer }: MagicBallModelProps
         receiveShadow
       />
 
-      {/* 3D Answer Display positioned in ball's window */}
+      {/* 3D Answer Display positioned in ball's window - always rendered for blue background */}
       <AnswerDisplay
         answer={currentAnswer}
         visible={!isShaking && !!currentAnswer}
