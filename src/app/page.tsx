@@ -4,18 +4,13 @@ import { useState } from 'react';
 
 type CoinSide = 'heads' | 'tails';
 
-interface QuantumResponse {
-  success: boolean;
-  data: number[];
-  length: number;
-  type: string;
-}
 
 export default function QuantumCoinFlip() {
   const [isFlipping, setIsFlipping] = useState(false);
   const [result, setResult] = useState<CoinSide | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [flipHistory, setFlipHistory] = useState<CoinSide[]>([]);
+  const [rateLimitTimer, setRateLimitTimer] = useState<number | null>(null);
 
   const flipCoin = async () => {
     if (isFlipping) return;
@@ -25,22 +20,69 @@ export default function QuantumCoinFlip() {
     setResult(null);
 
     try {
-      // Fetch quantum random number from ANU
-      const response = await fetch('/api/quantum-random');
+      let randomNum: number;
+      let apiUsed = '';
       
-      if (!response.ok) {
-        throw new Error('Не удалось получить квантовое случайное число');
+      // Try quantum APIs in order of preference
+      try {
+        // Primary: ANU QRNG
+        const anuResponse = await fetch('https://qrng.anu.edu.au/API/jsonI.php?length=1&type=uint8', {
+          headers: { 'Accept': 'application/json' },
+          signal: AbortSignal.timeout(8000)
+        });
+        
+        if (anuResponse.ok) {
+          const anuData = await anuResponse.json();
+          if (anuData.success && anuData.data && anuData.data.length > 0) {
+            randomNum = anuData.data[0];
+            apiUsed = 'ANU QRNG';
+          } else {
+            throw new Error('Invalid ANU response');
+          }
+        } else {
+          // Check for rate limit error
+          if (anuResponse.status === 500) {
+            const errorText = await anuResponse.text();
+            if (errorText.includes('1 requests per minute')) {
+              throw new Error('RATE_LIMIT');
+            }
+          }
+          throw new Error('ANU API failed');
+        }
+      } catch (anuError) {
+        // If it's a rate limit error, throw it immediately
+        if (anuError instanceof Error && anuError.message === 'RATE_LIMIT') {
+          throw anuError;
+        }
+        
+        // Fallback: LfD QRNG
+        try {
+          const lfdResponse = await fetch('https://lfdr.de/qrng_api/qrng?length=1&format=HEX', {
+            headers: { 'Accept': 'application/json' },
+            signal: AbortSignal.timeout(8000)
+          });
+          
+          if (lfdResponse.ok) {
+            const lfdData = await lfdResponse.json();
+            if (lfdData.qrn && lfdData.length === 1) {
+              randomNum = parseInt(lfdData.qrn, 16);
+              apiUsed = 'LfD QRNG (fallback)';
+            } else {
+              throw new Error('Invalid LfD response');
+            }
+          } else {
+            throw new Error('LfD API failed');
+          }
+        } catch {
+          throw new Error('Все квантовые API недоступны');
+        }
       }
 
-      const data: QuantumResponse = await response.json();
-      
-      if (!data.success || data.data.length === 0) {
-        throw new Error('Неверный ответ от квантового API');
-      }
-
-      // Use the first random number to determine heads or tails
-      const randomNum = data.data[0];
+      // Use the quantum random number to determine heads or tails
       const coinResult: CoinSide = randomNum % 2 === 0 ? 'heads' : 'tails';
+      
+      // Store which API was used for display
+      console.log(`Quantum number generated using: ${apiUsed}`);
       
       // Simulate coin flip animation delay
       setTimeout(() => {
@@ -50,7 +92,25 @@ export default function QuantumCoinFlip() {
       }, 2000);
       
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Произошла неизвестная ошибка');
+      if (err instanceof Error && err.message === 'RATE_LIMIT') {
+        setError('Превышен лимит запросов (1 в минуту). Повторите попытку через:');
+        setRateLimitTimer(60);
+        
+        // Start countdown timer
+        const timer = setInterval(() => {
+          setRateLimitTimer(prev => {
+            if (prev && prev > 1) {
+              return prev - 1;
+            } else {
+              setError(null);
+              clearInterval(timer);
+              return null;
+            }
+          });
+        }, 1000);
+      } else {
+        setError(err instanceof Error ? err.message : 'Произошла неизвестная ошибка');
+      }
       setIsFlipping(false);
     }
   };
@@ -105,27 +165,37 @@ export default function QuantumCoinFlip() {
             <p className="text-white/70 text-sm">
               Результат квантового измерения: {result === 'heads' ? 'орёл' : 'решка'}
             </p>
+            <p className="text-white/50 text-xs mt-1">
+              Источник энтропии: Квантовый генератор случайных чисел
+            </p>
           </div>
         )}
 
         {/* Error Display */}
         {error && (
           <div className="mb-6 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
-            <p className="text-red-300 text-sm">{error}</p>
+            <p className="text-red-300 text-sm">
+              {error}
+              {rateLimitTimer && (
+                <span className="block mt-1 font-mono text-lg text-red-200">
+                  {rateLimitTimer} сек
+                </span>
+              )}
+            </p>
           </div>
         )}
 
         {/* Flip Button */}
         <button
           onClick={flipCoin}
-          disabled={isFlipping}
+          disabled={isFlipping || rateLimitTimer !== null}
           className={`w-full py-3 px-6 rounded-xl font-semibold transition-all duration-200 ${
-            isFlipping
+            isFlipping || rateLimitTimer !== null
               ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
               : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
           }`}
         >
-          {isFlipping ? 'Подбрасываю...' : 'Подбросить Квантовую Монету'}
+          {isFlipping ? 'Подбрасываю...' : rateLimitTimer ? `Ожидание ${rateLimitTimer}с` : 'Подбросить Квантовую Монету'}
         </button>
 
         {/* Statistics */}

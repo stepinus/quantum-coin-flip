@@ -9,7 +9,8 @@ interface ANUResponse {
 
 export async function GET(request: NextRequest) {
   try {
-    // Use ANU's legacy quantum random number API
+    // Use ANU's quantum random number API
+    // Note: API is limited to 1 request per minute for free tier
     // This endpoint generates truly random numbers from quantum vacuum fluctuations
     const apiUrl = 'https://qrng.anu.edu.au/API/jsonI.php?length=1&type=uint8';
     
@@ -17,12 +18,20 @@ export async function GET(request: NextRequest) {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
+        'User-Agent': 'QuantumCoinFlip/1.0'
       },
       // Add timeout to prevent hanging requests
-      signal: AbortSignal.timeout(10000), // 10 second timeout
+      signal: AbortSignal.timeout(15000), // 15 second timeout (increased for rate limits)
     });
 
     if (!response.ok) {
+      // Handle rate limiting (500 error when exceeding 1 req/min limit)
+      if (response.status === 500) {
+        const errorText = await response.text();
+        if (errorText.includes('1 requests per minute')) {
+          throw new Error('ANU API rate limit exceeded (1 request per minute)');
+        }
+      }
       throw new Error(`ANU API responded with status: ${response.status}`);
     }
 
@@ -46,23 +55,15 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching quantum random number:', error);
     
-    // Fallback to pseudorandom number if quantum API fails
-    // This ensures the app still works even if the quantum service is down
-    const fallbackNumber = Math.floor(Math.random() * 256);
-    
-    const fallbackResult: ANUResponse = {
-      success: true,
-      data: [fallbackNumber],
-      length: 1,
-      type: 'uint8_fallback',
-    };
-
-    return NextResponse.json(fallbackResult, { 
-      headers: {
-        'X-Fallback': 'true',
-        'X-Error': error instanceof Error ? error.message : 'Unknown error'
-      }
-    });
+    // Return error without fallback to maintain quantum authenticity
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        retryAfter: error instanceof Error && error.message.includes('rate limit') ? 60 : null
+      }, 
+      { status: 503 }
+    );
   }
 }
 
