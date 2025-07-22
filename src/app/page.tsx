@@ -11,7 +11,7 @@ export default function QuantumCoinFlip() {
   const [error, setError] = useState<string | null>(null);
   const [flipHistory, setFlipHistory] = useState<CoinSide[]>([]);
   const [rateLimitTimer, setRateLimitTimer] = useState<number | null>(null);
-  const [lastUsedApi, setLastUsedApi] = useState<string>('ANU');
+  const [lastUsedApi, setLastUsedApi] = useState<string>('');
 
   const flipCoin = async () => {
     if (isFlipping) return;
@@ -57,17 +57,17 @@ export default function QuantumCoinFlip() {
           throw anuError;
         }
         
-        // Fallback: LfD QRNG
+        // Fallback: LfD QRNG (via server-side API to avoid CORS)
         try {
-          const lfdResponse = await fetch('https://lfdr.de/qrng_api/qrng?length=1&format=HEX', {
+          const lfdResponse = await fetch('/api/quantum-random?source=lfd', {
             headers: { 'Accept': 'application/json' },
             signal: AbortSignal.timeout(8000)
           });
           
           if (lfdResponse.ok) {
             const lfdData = await lfdResponse.json();
-            if (lfdData.qrn && lfdData.length === 1) {
-              randomNum = parseInt(lfdData.qrn, 16);
+            if (lfdData.success && lfdData.data && lfdData.data.length > 0) {
+              randomNum = lfdData.data[0];
               apiUsed = 'LfD QRNG (fallback)';
               setLastUsedApi('LfD');
             } else {
@@ -247,14 +247,16 @@ export default function QuantumCoinFlip() {
 
         {/* Footer */}
         <div className="mt-8 pt-4 border-t border-white/10">
-          <p className="text-white/60 text-xs">
-            {lastUsedApi === 'ANU' 
-              ? 'Использует квантовые случайные числа от Австралийского Национального Университета'
-              : lastUsedApi === 'LfD'
-              ? 'Использует квантовые случайные числа от LfD Quantum Lab (ID Quantique QRNG)'
-              : 'Использует квантовые случайные числа от внешних квантовых лабораторий'
-            }
-          </p>
+          {lastUsedApi && (
+            <p className="text-white/60 text-xs">
+              {lastUsedApi === 'ANU' 
+                ? 'Использован квантовый генератор Австралийского Национального Университета'
+                : lastUsedApi === 'LfD'
+                ? 'Использован квантовый генератор LfD Quantum Lab (ID Quantique QRNG)'
+                : 'Использован внешний квантовый генератор случайных чисел'
+              }
+            </p>
+          )}
         </div>
       </div>
     </div>
