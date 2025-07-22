@@ -1,103 +1,184 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useState } from 'react';
+
+type CoinSide = 'heads' | 'tails';
+
+interface QuantumResponse {
+  success: boolean;
+  data: number[];
+  length: number;
+  type: string;
+}
+
+export default function QuantumCoinFlip() {
+  const [isFlipping, setIsFlipping] = useState(false);
+  const [result, setResult] = useState<CoinSide | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [flipHistory, setFlipHistory] = useState<CoinSide[]>([]);
+
+  const flipCoin = async () => {
+    if (isFlipping) return;
+
+    setIsFlipping(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      // Fetch quantum random number from ANU
+      const response = await fetch('/api/quantum-random');
+      
+      if (!response.ok) {
+        throw new Error('Не удалось получить квантовое случайное число');
+      }
+
+      const data: QuantumResponse = await response.json();
+      
+      if (!data.success || data.data.length === 0) {
+        throw new Error('Неверный ответ от квантового API');
+      }
+
+      // Use the first random number to determine heads or tails
+      const randomNum = data.data[0];
+      const coinResult: CoinSide = randomNum % 2 === 0 ? 'heads' : 'tails';
+      
+      // Simulate coin flip animation delay
+      setTimeout(() => {
+        setResult(coinResult);
+        setFlipHistory(prev => [coinResult, ...prev.slice(0, 9)]); // Keep last 10 flips
+        setIsFlipping(false);
+      }, 2000);
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Произошла неизвестная ошибка');
+      setIsFlipping(false);
+    }
+  };
+
+  const getStats = () => {
+    const heads = flipHistory.filter(flip => flip === 'heads').length;
+    const tails = flipHistory.filter(flip => flip === 'tails').length;
+    return { heads, tails, total: flipHistory.length };
+  };
+
+  const stats = getStats();
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white/10 backdrop-blur-lg rounded-3xl shadow-2xl p-8 text-center">
+        <h1 className="text-3xl font-bold text-white mb-2">
+          Квантовое Подбрасывание Монеты
+        </h1>
+        <p className="text-white/80 text-sm mb-8">
+          Основано на настоящей квантовой случайности от АНУ
+        </p>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+        {/* Coin Display */}
+        <div className="mb-8 flex justify-center">
+          <div 
+            className={`w-32 h-32 rounded-full border-4 border-yellow-400 bg-gradient-to-br from-yellow-300 to-yellow-600 shadow-lg flex items-center justify-center text-2xl font-bold transition-all duration-500 ${
+              isFlipping 
+                ? 'animate-spin' 
+                : result 
+                  ? 'scale-110 shadow-yellow-400/50 shadow-2xl' 
+                  : 'hover:scale-105'
+            }`}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            {isFlipping ? (
+              <div className="text-yellow-800">?</div>
+            ) : result ? (
+              <div className="text-yellow-800">
+                {result === 'heads' ? '👑' : '🏛️'}
+              </div>
+            ) : (
+              <div className="text-yellow-800">₿</div>
+            )}
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+
+        {/* Result Display */}
+        {result && !isFlipping && (
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-white mb-2">
+              {result === 'heads' ? 'Орёл!' : 'Решка!'}
+            </h2>
+            <p className="text-white/70 text-sm">
+              Результат квантового измерения: {result === 'heads' ? 'орёл' : 'решка'}
+            </p>
+          </div>
+        )}
+
+        {/* Error Display */}
+        {error && (
+          <div className="mb-6 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+            <p className="text-red-300 text-sm">{error}</p>
+          </div>
+        )}
+
+        {/* Flip Button */}
+        <button
+          onClick={flipCoin}
+          disabled={isFlipping}
+          className={`w-full py-3 px-6 rounded-xl font-semibold transition-all duration-200 ${
+            isFlipping
+              ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
+              : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
+          }`}
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          {isFlipping ? 'Подбрасываю...' : 'Подбросить Квантовую Монету'}
+        </button>
+
+        {/* Statistics */}
+        {flipHistory.length > 0 && (
+          <div className="mt-8 bg-white/5 rounded-xl p-4">
+            <h3 className="text-white font-semibold mb-3">Статистика (Последние {stats.total} подбрасываний)</h3>
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div className="text-center">
+                <div className="text-2xl">👑</div>
+                <div className="text-white">{stats.heads}</div>
+                <div className="text-white/60">Орёл</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl">🏛️</div>
+                <div className="text-white">{stats.tails}</div>
+                <div className="text-white/60">Решка</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl">📊</div>
+                <div className="text-white">
+                  {stats.total > 0 ? Math.round((stats.heads / stats.total) * 100) : 0}%
+                </div>
+                <div className="text-white/60">Орёл</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* History */}
+        {flipHistory.length > 0 && (
+          <div className="mt-4">
+            <h4 className="text-white/80 text-sm mb-2">Последние подбрасывания:</h4>
+            <div className="flex justify-center space-x-1 flex-wrap">
+              {flipHistory.slice(0, 10).map((flip, index) => (
+                <span 
+                  key={index} 
+                  className="text-lg"
+                  title={flip}
+                >
+                  {flip === 'heads' ? '👑' : '🏛️'}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="mt-8 pt-4 border-t border-white/10">
+          <p className="text-white/60 text-xs">
+            Использует квантовые случайные числа от Австралийского Национального Университета
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
