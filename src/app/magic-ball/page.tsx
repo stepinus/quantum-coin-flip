@@ -144,7 +144,7 @@ export default function MagicBallPage() {
               {/* Directional light focused on the d20 window area */}
               <directionalLight 
                 position={[0, 0, 10]} 
-                intensity={1.5} 
+                intensity={1.0} 
                 target-position={[0, -1, 0]}
                 castShadow
                 shadow-mapSize={[2048, 2048]}

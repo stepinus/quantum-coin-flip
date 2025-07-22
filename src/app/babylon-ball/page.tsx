@@ -53,7 +53,7 @@ export default function BabylonBallPage() {
         camera.setTarget(Vector3.Zero());
         camera.lowerRadiusLimit = 2;
         camera.upperRadiusLimit = 20;
-
+        
         // Enable camera controls
         camera.attachControl(canvasRef.current, true);
 
@@ -75,23 +75,23 @@ export default function BabylonBallPage() {
 
         // Load the Magic 8 Ball model using the modern async API
         try {
-          const result = await ImportMeshAsync("Magic 8 Ball.glb", scene);
+          const result = await ImportMeshAsync("", "/", "Magic 8 Ball.glb", scene);
           console.log("Model loaded successfully:", result);
           console.log("Meshes count:", result.meshes.length);
           console.log("All meshes:", result.meshes.map(m => ({ name: m.name, visible: m.isVisible })));
-
+          
           setIsLoading(false);
-
+          
           // Scale and position the model
           if (result.meshes.length > 0) {
             result.meshes.forEach((mesh) => {
               // Make sure mesh is visible and enabled
               mesh.isVisible = true;
               mesh.setEnabled(true);
-
+              
               mesh.scaling = new Vector3(1, 1, 1); // Try normal size first
               mesh.position = new Vector3(0, 0, 0);
-
+              
               // Debug mesh info
               console.log(`Found mesh: "${mesh.name}", visible: ${mesh.isVisible}, enabled: ${mesh.isEnabled()}`);
             });
@@ -118,7 +118,7 @@ export default function BabylonBallPage() {
                 mesh.material = d20Material;
               }
             });
-
+            
             // Add extra lighting inside the ball to illuminate the d20
             const { PointLight } = await import('@babylonjs/core');
             const innerLight = new PointLight("innerLight", new Vector3(0, -0.2, 0.3), scene);
@@ -174,14 +174,14 @@ export default function BabylonBallPage() {
       {/* Navigation */}
       <nav className="p-4">
         <div className="flex gap-4">
-          <Link
-            href="/"
+          <Link 
+            href="/" 
             className="inline-block px-4 py-2 bg-white/10 backdrop-blur-md rounded-lg text-white hover:bg-white/20 transition-colors"
           >
             ← Главная
           </Link>
-          <Link
-            href="/magic-ball"
+          <Link 
+            href="/magic-ball" 
             className="inline-block px-4 py-2 bg-white/10 backdrop-blur-md rounded-lg text-white hover:bg-white/20 transition-colors"
           >
             Three.js версия
@@ -200,12 +200,12 @@ export default function BabylonBallPage() {
 
           {/* 3D Scene */}
           <div className="h-96 mb-8 rounded-xl overflow-hidden bg-gradient-to-b from-gray-900/50 to-gray-800/50 relative">
-            <canvas
+            <canvas 
               ref={canvasRef}
               className="w-full h-full"
               style={{ outline: 'none' }}
             />
-
+            
             {/* Loading Overlay */}
             {isLoading && (
               <div className="absolute inset-0 flex items-center justify-center bg-gray-900/75">
@@ -215,14 +215,14 @@ export default function BabylonBallPage() {
                 </div>
               </div>
             )}
-
+            
             {/* Error Overlay */}
             {error && (
               <div className="absolute inset-0 flex items-center justify-center bg-red-900/75">
                 <div className="text-center">
                   <p className="text-red-200 mb-2">{error}</p>
-                  <button
-                    onClick={() => window.location.reload()}
+                  <button 
+                    onClick={() => window.location.reload()} 
                     className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
                   >
                     Перезагрузить
@@ -236,8 +236,8 @@ export default function BabylonBallPage() {
           <div className="mt-8 p-4 bg-white/5 rounded-xl">
             <h3 className="text-white font-semibold mb-2">Управление:</h3>
             <p className="text-white/70 text-sm">
-              • Используйте мышь для поворота камеры<br />
-              • Колесико мыши для приближения/отдаления<br />
+              • Используйте мышь для поворота камеры<br/>
+              • Колесико мыши для приближения/отдаления<br/>
               • Модель загружается с помощью Babylon.js
             </p>
           </div>
@@ -246,9 +246,9 @@ export default function BabylonBallPage() {
           <div className="mt-4 p-4 bg-white/5 rounded-xl">
             <h3 className="text-white font-semibold mb-2">Технические детали:</h3>
             <p className="text-white/70 text-sm">
-              • Engine: Babylon.js<br />
-              • Model: Magic 8 Ball.glb<br />
-              • Format: glTF 2.0<br />
+              • Engine: Babylon.js<br/>
+              • Model: Magic 8 Ball.glb<br/>
+              • Format: glTF 2.0<br/>
               • Loader: @babylonjs/loaders
             </p>
           </div>
