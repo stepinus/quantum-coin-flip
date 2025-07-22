@@ -20,21 +20,21 @@
   - Add proper text styling (white color, appropriate font size)
   - _Requirements: 3.1, 3.2, 3.3_
 
-- [-] 4. Show blue background window always (even without answer)
+- [x] 4. Show blue background window always (even without answer)
   - Modify AnswerDisplay component to show blue circular background at all times
   - Keep background visible when no answer is present
   - Ensure background appears immediately when page loads
   - Only hide/show the text content based on answer state
   - _Requirements: 3.1, 3.2_
 
-- [ ] 5. Implement answer text appearance animation
+- [x] 5. Implement answer text appearance animation
   - Create spiral animation effect for text appearing from center of blue background
   - Add smooth transition animation when answer becomes visible
   - Implement text scaling/rotation effect during appearance
   - Ensure animation completes before text becomes fully readable
   - _Requirements: 3.3, 5.1_
 
-- [ ] 6. Enhance shake animation system
+- [x] 6. Enhance shake animation system
   - Improve current shake animation with more realistic ball physics
   - Add subtle ball bouncing/settling animation after shake stops
   - Ensure shake animation feels natural and responsive
