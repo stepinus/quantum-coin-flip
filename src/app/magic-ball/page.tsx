@@ -1,11 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, useGLTF, Environment, Text as Text3D } from '@react-three/drei';
-import { useRef } from 'react';
-import * as THREE from 'three';
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls, Environment } from '@react-three/drei';
 import Link from 'next/link';
+import { MagicBallModel } from '@/components/MagicBallModel';
 
 // Magic 8 Ball answers
 const MAGIC_ANSWERS = [
@@ -34,146 +33,7 @@ const MAGIC_ANSWERS = [
   'Определенно нет'
 ];
 
-function MagicBall({ isShaking, currentAnswer }: { isShaking: boolean; currentAnswer: string }) {
-  const groupRef = useRef<THREE.Group>(null!);
-  const { scene, nodes, materials } = useGLTF('/ball.glb');
 
-  // This is a more stable way to modify materials.
-  // We target materials by their specific names from the GLB file.
-  const shellMaterial = materials['ball_1'] as THREE.MeshStandardMaterial;
-  const windowMaterial = materials['window_1'] as THREE.MeshStandardMaterial;
-
-  if (shellMaterial) {
-    shellMaterial.transparent = false;
-    shellMaterial.opacity = 1.0;
-    shellMaterial.color.set('black');
-    shellMaterial.roughness = 0.5; // Glossy finish
-    shellMaterial.metalness = 0.2;
-    shellMaterial.depthWrite = true;
-    shellMaterial.depthTest = true;
-    shellMaterial.side = THREE.DoubleSide; // Only render front faces
-  }
-
-  if (windowMaterial) {
-    windowMaterial.transparent = true;
-    windowMaterial.opacity = 0.9;
-    windowMaterial.roughness = 0.5; // Smooth glass-like surface
-    windowMaterial.depthWrite = false; // Allow objects behind to be visible
-    windowMaterial.depthTest = true;
-    windowMaterial.side = THREE.FrontSide;
-  }
-
-  // Shake animation using useFrame
-  useFrame((state) => {
-    if (isShaking && groupRef.current) {
-      const time = state.clock.elapsedTime;
-      groupRef.current.rotation.x = Math.sin(time * 20) * 0.3;
-      groupRef.current.rotation.y = Math.sin(time * 15) * 0.3;
-      groupRef.current.rotation.z = Math.sin(time * 25) * 0.2;
-    }
-  });
-  
-  // Hide d20 initially or show specific face
-  const clonedScene = scene.clone();
-  clonedScene.traverse((node) => {
-    if (node.name === 'd20_1') {
-      node.visible = false;
-    }
-  });
-
-  return (
-    <group ref={groupRef}>
-      <primitive 
-        object={clonedScene} 
-        scale={10}
-        rotation={[Math.PI / 2, 0, 0]} // Straight 90 degrees rotation (45 degrees tilt)
-        position={[0, 0, 0]}
-        castShadow
-        receiveShadow
-      />
-      {/* Classic Magic 8 Ball answer triangle positioned in window */}
-      {currentAnswer && !isShaking && (
-        <group>
-          {/* 
-            This group is for the answer text and its background.
-            It's positioned inside the ball model.
-          */}
-          <group 
-            position={[0, 0, 1.2]} // Positioned to appear in the window
-            rotation={[0, 0, 0]} // Tilted slightly to match window angle
-            visible={true}
-          >
-            {/* The blue background for the text */}
-            <mesh>
-              <planeGeometry args={[1.3, 1.3]} />
-              <meshBasicMaterial
-                color="blue" // Simple blue color
-                transparent={false}
-                opacity={1.0}
-                side={THREE.DoubleSide}
-                depthWrite={true}
-                depthTest={true}
-              />
-            </mesh>
-            
-            {/* The answer text */}
-            <Text3D
-              position={[0, 0, 0.01]} // Slightly in front of the blue plane
-              fontSize={0.15}
-              color="white"
-              anchorX="center"
-              anchorY="middle"
-              maxWidth={1.4}
-              textAlign="center"
-              fontWeight="bold"
-            >
-              {currentAnswer}
-            </Text3D>
-          </group>
-        </group>
-      )}
-      {/* Additional lights for better visibility */}
-      {currentAnswer && !isShaking && (
-        <>
-          {/* Spotlight from outside */}
-          <spotLight
-            position={[0, 0, 10]}
-            target-position={[0, 0, 0]}
-            angle={Math.PI / 6}
-            penumbra={0.3}
-            intensity={8}
-            color={0xffffff}
-            distance={20}
-          />
-          
-          {/* Point light inside the ball behind the text */}
-          <pointLight
-            position={[0, 0, 0.5]}
-            intensity={4}
-            color={0xffffff}
-            distance={5}
-          />
-          
-          {/* Additional point light in front of text */}
-          <pointLight
-            position={[0, 0, 3]}
-            intensity={3}
-            color={0xffffff}
-            distance={3}
-          />
-          
-          {/* Light specifically for the text background */}
-          <pointLight
-            position={[0, 0, 1.3]}
-            intensity={5}
-            color={0xffffff}
-            distance={2}
-          />
-        </>
-      )}
-    </group>
-  );
-}
 
 export default function MagicBallPage() {
   const [isShaking, setIsShaking] = useState(false);
@@ -295,16 +155,12 @@ export default function MagicBallPage() {
                 shadow-camera-bottom={-10}
               />
               
-              <MagicBall isShaking={isShaking} currentAnswer={currentAnswer} />
+              <MagicBallModel isShaking={isShaking} currentAnswer={currentAnswer} />
               
               <OrbitControls 
                 enabled={!isShaking}
-                enableZoom={false}
-                enablePan={false}
-                minPolarAngle={Math.PI / 3}
-                maxPolarAngle={Math.PI - Math.PI / 3}
-                minAzimuthAngle={-Math.PI / 4}
-                maxAzimuthAngle={Math.PI / 4}
+                enableZoom={true}
+                enablePan={true}
                 target={[0, 0, 0]}
               />
             </Canvas>

@@ -153,12 +153,20 @@ export default function QuantumCoinFlip() {
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 flex flex-col">
       {/* Navigation */}
       <nav className="p-4">
-        <Link 
-          href="/magic-ball" 
-          className="inline-block px-4 py-2 bg-white/10 backdrop-blur-md rounded-lg text-white hover:bg-white/20 transition-colors"
-        >
-          🎱 Магический Шар
-        </Link>
+        <div className="flex gap-4">
+          <Link 
+            href="/magic-ball" 
+            className="inline-block px-4 py-2 bg-white/10 backdrop-blur-md rounded-lg text-white hover:bg-white/20 transition-colors"
+          >
+            🎱 Магический Шар (Three.js)
+          </Link>
+          <Link 
+            href="/babylon-ball" 
+            className="inline-block px-4 py-2 bg-white/10 backdrop-blur-md rounded-lg text-white hover:bg-white/20 transition-colors"
+          >
+            🎱 Babylon.js версия
+          </Link>
+        </div>
       </nav>
 
       <div className="flex-1 flex items-center justify-center p-4">
