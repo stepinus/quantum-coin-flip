@@ -11,6 +11,7 @@ export default function QuantumCoinFlip() {
   const [error, setError] = useState<string | null>(null);
   const [flipHistory, setFlipHistory] = useState<CoinSide[]>([]);
   const [rateLimitTimer, setRateLimitTimer] = useState<number | null>(null);
+  const [lastUsedApi, setLastUsedApi] = useState<string>('ANU');
 
   const flipCoin = async () => {
     if (isFlipping) return;
@@ -36,6 +37,7 @@ export default function QuantumCoinFlip() {
           if (anuData.success && anuData.data && anuData.data.length > 0) {
             randomNum = anuData.data[0];
             apiUsed = 'ANU QRNG';
+            setLastUsedApi('ANU');
           } else {
             throw new Error('Invalid ANU response');
           }
@@ -67,6 +69,7 @@ export default function QuantumCoinFlip() {
             if (lfdData.qrn && lfdData.length === 1) {
               randomNum = parseInt(lfdData.qrn, 16);
               apiUsed = 'LfD QRNG (fallback)';
+              setLastUsedApi('LfD');
             } else {
               throw new Error('Invalid LfD response');
             }
@@ -245,7 +248,12 @@ export default function QuantumCoinFlip() {
         {/* Footer */}
         <div className="mt-8 pt-4 border-t border-white/10">
           <p className="text-white/60 text-xs">
-            Использует квантовые случайные числа от Австралийского Национального Университета
+            {lastUsedApi === 'ANU' 
+              ? 'Использует квантовые случайные числа от Австралийского Национального Университета'
+              : lastUsedApi === 'LfD'
+              ? 'Использует квантовые случайные числа от LfD Quantum Lab (ID Quantique QRNG)'
+              : 'Использует квантовые случайные числа от внешних квантовых лабораторий'
+            }
           </p>
         </div>
       </div>
