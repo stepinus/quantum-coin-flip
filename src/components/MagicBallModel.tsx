@@ -26,7 +26,7 @@ export function MagicBallModel({ isShaking, currentAnswer }: MagicBallModelProps
   if (shellMaterial) {
     shellMaterial.transparent = false;
     shellMaterial.opacity = 1.0;
-    shellMaterial.color.set('black');
+    // Keep original color/texture - don't force black
     shellMaterial.roughness = 0.3; // Glossy finish as per design
     shellMaterial.metalness = 0.1; // Slight metallic property
     shellMaterial.depthWrite = true;
@@ -43,6 +43,36 @@ export function MagicBallModel({ isShaking, currentAnswer }: MagicBallModelProps
     windowMaterial.depthTest = true;
     windowMaterial.side = THREE.FrontSide;
   }
+
+  // Debug and fix all materials in the scene
+  clonedScene.traverse((node) => {
+    if (node instanceof THREE.Mesh && node.material) {
+      const material = node.material as THREE.MeshStandardMaterial;
+
+      // Debug: log all mesh names and materials
+      console.log(`Mesh: ${node.name}, Material: ${material.name || 'unnamed'}`);
+
+      // Apply settings based on mesh/material name
+      if (node.name.includes('window') || material.name?.includes('window')) {
+        // Window should be transparent
+        material.transparent = true;
+        material.opacity = 0.9;
+        material.roughness = 0.0;
+        material.metalness = 0.0;
+        material.depthWrite = false;
+        material.depthTest = true;
+        material.side = THREE.FrontSide;
+      } else {
+        // Everything else (ball shell) should be fully opaque but keep original color/texture
+        material.transparent = false;
+        material.opacity = 1.0;
+        // DON'T change color - keep original texture
+        material.depthWrite = true;
+        material.depthTest = true;
+        material.side = THREE.FrontSide;
+      }
+    }
+  });
 
   // Hide any unwanted elements (like d20)
   clonedScene.traverse((node) => {
@@ -63,7 +93,7 @@ export function MagicBallModel({ isShaking, currentAnswer }: MagicBallModelProps
     if (isShaking && groupRef.current) {
       const currentTime = Date.now();
       const elapsedTime = (currentTime - shakeStartTimeRef.current) / 1000; // Convert to seconds
-      
+
       // Only animate for 3 seconds as per requirement
       if (elapsedTime < 3) {
         // Use different frequencies for each axis to create realistic shake
@@ -87,19 +117,19 @@ export function MagicBallModel({ isShaking, currentAnswer }: MagicBallModelProps
 
   return (
     <group ref={groupRef}>
-      <primitive 
-        object={clonedScene} 
+      <primitive
+        object={clonedScene}
         scale={10} // Basic scaling as per design
         rotation={[Math.PI / 2, 0, 0]} // Basic positioning
         position={[0, 0, 0]} // Centered position
         castShadow
         receiveShadow
       />
-      
+
       {/* 3D Answer Display positioned in ball's window */}
-      <AnswerDisplay 
-        answer={currentAnswer} 
-        visible={!isShaking && !!currentAnswer} 
+      <AnswerDisplay
+        answer={currentAnswer}
+        visible={!isShaking && !!currentAnswer}
       />
     </group>
   );

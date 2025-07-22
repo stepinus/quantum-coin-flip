@@ -63,7 +63,7 @@ export function AnswerDisplay({ answer, visible }: AnswerDisplayProps) {
           anchorY="middle"
           position={[
             0, // Center horizontally
-            0.05 + (lines.length - 1) * fontSize * 0.6 - index * fontSize * 1.2, // Stack vertically with slight upward offset
+            0.08 + (lines.length - 1) * fontSize * 0.6 - index * fontSize * 1.2, // Stack vertically with slight upward offset
             -0.02 // Closer to background
           ]}
           maxWidth={0.8}
