@@ -45,16 +45,22 @@ function MagicBall({ isShaking, currentAnswer }: { isShaking: boolean; currentAn
 
   if (shellMaterial) {
     shellMaterial.transparent = false;
-    shellMaterial.opacity = 0.0;
+    shellMaterial.opacity = 1.0;
     shellMaterial.color.set('black');
-    shellMaterial.roughness = 0.1; // Glossy finish
+    shellMaterial.roughness = 0.5; // Glossy finish
     shellMaterial.metalness = 0.2;
+    shellMaterial.depthWrite = true;
+    shellMaterial.depthTest = true;
+    shellMaterial.side = THREE.DoubleSide; // Only render front faces
   }
 
   if (windowMaterial) {
-    windowMaterial.transparent = false;
-    windowMaterial.opacity = 0.2;
-    windowMaterial.roughness = 0; // Smooth glass-like surface
+    windowMaterial.transparent = true;
+    windowMaterial.opacity = 0.9;
+    windowMaterial.roughness = 0.5; // Smooth glass-like surface
+    windowMaterial.depthWrite = false; // Allow objects behind to be visible
+    windowMaterial.depthTest = true;
+    windowMaterial.side = THREE.FrontSide;
   }
 
   // Shake animation using useFrame
@@ -82,8 +88,6 @@ function MagicBall({ isShaking, currentAnswer }: { isShaking: boolean; currentAn
         scale={10}
         rotation={[Math.PI / 2, 0, 0]} // Straight 90 degrees rotation (45 degrees tilt)
         position={[0, 0, 0]}
-        transparent={false}
-        visible={true}
         castShadow
         receiveShadow
       />
@@ -95,21 +99,20 @@ function MagicBall({ isShaking, currentAnswer }: { isShaking: boolean; currentAn
             It's positioned inside the ball model.
           */}
           <group 
-            position={[0, 0, 1.1]} // Positioned to appear in the window
+            position={[0, 0, 1.2]} // Positioned to appear in the window
             rotation={[0, 0, 0]} // Tilted slightly to match window angle
             visible={true}
           >
             {/* The blue background for the text */}
             <mesh>
-              <planeGeometry args={[1.5, 1.5]} />
-              <meshStandardMaterial
-                color="#000033" // A very dark blue for the base color
-                emissive="#0055ff" // A brighter blue for the glow
-                emissiveIntensity={1.5} // Controls the strength of the glow
-                transparent={true}
-                opacity={0.8}
+              <planeGeometry args={[1.3, 1.3]} />
+              <meshBasicMaterial
+                color="blue" // Simple blue color
+                transparent={false}
+                opacity={1.0}
                 side={THREE.DoubleSide}
-                toneMapped={false} // Ensures the glow isn't washed out by tone mapping
+                depthWrite={true}
+                depthTest={true}
               />
             </mesh>
             
@@ -129,24 +132,42 @@ function MagicBall({ isShaking, currentAnswer }: { isShaking: boolean; currentAn
           </group>
         </group>
       )}
-      {/* Additional spotlight focused on d20 window when answer is shown */}
+      {/* Additional lights for better visibility */}
       {currentAnswer && !isShaking && (
         <>
+          {/* Spotlight from outside */}
           <spotLight
             position={[0, 0, 10]}
             target-position={[0, 0, 0]}
             angle={Math.PI / 6}
             penumbra={0.3}
-            intensity={5}
-            color={0xaaaaff}
+            intensity={8}
+            color={0xffffff}
             distance={20}
           />
-          {/* Additional point light inside the ball for d20 */}
+          
+          {/* Point light inside the ball behind the text */}
           <pointLight
-            position={[0, 0, 0]}
-            intensity={2}
-            color={0x6666ff}
+            position={[0, 0, 0.5]}
+            intensity={4}
+            color={0xffffff}
+            distance={5}
+          />
+          
+          {/* Additional point light in front of text */}
+          <pointLight
+            position={[0, 0, 2]}
+            intensity={3}
+            color={0xffffff}
             distance={3}
+          />
+          
+          {/* Light specifically for the text background */}
+          <pointLight
+            position={[0, 0, 1.3]}
+            intensity={5}
+            color={0xffffff}
+            distance={2}
           />
         </>
       )}
