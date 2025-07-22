@@ -140,9 +140,10 @@ export default function QuantumCoinFlip() {
   };
 
   const getStats = () => {
-    const heads = flipHistory.filter(flip => flip === 'heads').length;
-    const tails = flipHistory.filter(flip => flip === 'tails').length;
-    return { heads, tails, total: flipHistory.length };
+    const recent = flipHistory.slice(0, 10); // Only use last 10 flips for stats
+    const heads = recent.filter(flip => flip === 'heads').length;
+    const tails = recent.filter(flip => flip === 'tails').length;
+    return { heads, tails, total: recent.length };
   };
 
   const stats = getStats();
