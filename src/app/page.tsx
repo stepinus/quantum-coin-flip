@@ -26,58 +26,79 @@ export default function QuantumCoinFlip() {
       
       // Try quantum APIs in order of preference
       try {
-        // Primary: ANU QRNG
-        const anuResponse = await fetch('https://qrng.anu.edu.au/API/jsonI.php?length=1&type=uint8', {
-          headers: { 'Accept': 'application/json' },
+        // Primary: ANU Binary Stream (no rate limits!)
+        const binaryResponse = await fetch('https://qrng.anu.edu.au/wp-content/plugins/colours-plugin/get_one_binary.php', {
           signal: AbortSignal.timeout(8000)
         });
         
-        if (anuResponse.ok) {
-          const anuData = await anuResponse.json();
-          if (anuData.success && anuData.data && anuData.data.length > 0) {
-            randomNum = anuData.data[0];
-            apiUsed = 'ANU QRNG';
-            setLastUsedApi('ANU');
+        if (binaryResponse.ok) {
+          const binaryData = await binaryResponse.text();
+          if (binaryData && binaryData.length === 8 && /^[01]+$/.test(binaryData)) {
+            // Convert binary string to decimal (0-255)
+            randomNum = parseInt(binaryData, 2);
+            apiUsed = 'ANU Binary Stream';
+            setLastUsedApi('ANU_BINARY');
           } else {
-            throw new Error('Invalid ANU response');
+            throw new Error('Invalid binary response');
           }
         } else {
-          // Check for rate limit error
-          if (anuResponse.status === 500) {
-            const errorText = await anuResponse.text();
-            if (errorText.includes('1 requests per minute')) {
-              throw new Error('RATE_LIMIT');
-            }
-          }
-          throw new Error('ANU API failed');
+          throw new Error('ANU Binary API failed');
         }
-      } catch (anuError) {
-        // If it's a rate limit error, throw it immediately
-        if (anuError instanceof Error && anuError.message === 'RATE_LIMIT') {
-          throw anuError;
-        }
-        
-        // Fallback: LfD QRNG (via server-side API to avoid CORS)
+      } catch (binaryError) {
+        // Fallback 1: ANU JSON API (with rate limits)
         try {
-          const lfdResponse = await fetch('/api/quantum-random?source=lfd', {
+          const anuResponse = await fetch('https://qrng.anu.edu.au/API/jsonI.php?length=1&type=uint8', {
             headers: { 'Accept': 'application/json' },
             signal: AbortSignal.timeout(8000)
           });
           
-          if (lfdResponse.ok) {
-            const lfdData = await lfdResponse.json();
-            if (lfdData.success && lfdData.data && lfdData.data.length > 0) {
-              randomNum = lfdData.data[0];
-              apiUsed = 'LfD QRNG (fallback)';
-              setLastUsedApi('LfD');
+          if (anuResponse.ok) {
+            const anuData = await anuResponse.json();
+            if (anuData.success && anuData.data && anuData.data.length > 0) {
+              randomNum = anuData.data[0];
+              apiUsed = 'ANU QRNG (fallback)';
+              setLastUsedApi('ANU');
             } else {
-              throw new Error('Invalid LfD response');
+              throw new Error('Invalid ANU response');
             }
           } else {
-            throw new Error('LfD API failed');
+            // Check for rate limit error
+            if (anuResponse.status === 500) {
+              const errorText = await anuResponse.text();
+              if (errorText.includes('1 requests per minute')) {
+                throw new Error('RATE_LIMIT');
+              }
+            }
+            throw new Error('ANU API failed');
           }
-        } catch {
-          throw new Error('Все квантовые API недоступны');
+        } catch (anuError) {
+          // If it's a rate limit error, throw it immediately
+          if (anuError instanceof Error && anuError.message === 'RATE_LIMIT') {
+            throw anuError;
+          }
+        
+          // Fallback 2: LfD QRNG (via server-side API to avoid CORS)
+          try {
+            const lfdResponse = await fetch('/api/quantum-random?source=lfd', {
+              headers: { 'Accept': 'application/json' },
+              signal: AbortSignal.timeout(8000)
+            });
+            
+            if (lfdResponse.ok) {
+              const lfdData = await lfdResponse.json();
+              if (lfdData.success && lfdData.data && lfdData.data.length > 0) {
+                randomNum = lfdData.data[0];
+                apiUsed = 'LfD QRNG (fallback)';
+                setLastUsedApi('LfD');
+              } else {
+                throw new Error('Invalid LfD response');
+              }
+            } else {
+              throw new Error('LfD API failed');
+            }
+          } catch {
+            throw new Error('Все квантовые API недоступны');
+          }
         }
       }
 
@@ -249,8 +270,10 @@ export default function QuantumCoinFlip() {
         <div className="mt-8 pt-4 border-t border-white/10">
           {lastUsedApi && (
             <p className="text-white/60 text-xs">
-              {lastUsedApi === 'ANU' 
-                ? 'Использован квантовый генератор Австралийского Национального Университета'
+              {lastUsedApi === 'ANU_BINARY' 
+                ? 'Использован квантовый поток АНУ (бинарные данные)'
+                : lastUsedApi === 'ANU' 
+                ? 'Использован квантовый генератор АНУ (JSON API)'
                 : lastUsedApi === 'LfD'
                 ? 'Использован квантовый генератор LfD Quantum Lab (ID Quantique QRNG)'
                 : 'Использован внешний квантовый генератор случайных чисел'
