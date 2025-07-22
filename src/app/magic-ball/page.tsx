@@ -156,7 +156,7 @@ function MagicBall({ isShaking, currentAnswer }: { isShaking: boolean; currentAn
           
           {/* Additional point light in front of text */}
           <pointLight
-            position={[0, 0, 2]}
+            position={[0, 0, 3]}
             intensity={3}
             color={0xffffff}
             distance={3}
