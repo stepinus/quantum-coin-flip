@@ -325,7 +325,7 @@ export default function MagicBallPage({ hideBackButton = false }: { hideBackButt
       </div>
 
       {/* Ultra Minimal UI Overlay - Bottom fixed position */}
-      <div className="absolute bottom-0 left-0 right-0 h-20 flex flex-col items-center justify-center px-4 bg-transparent">
+      <div className="absolute bottom-20 left-0 right-0 h-20 flex flex-col items-center justify-center px-4 bg-transparent">
         {/* Error Display - centered above button */}
         {error && (
           <div className="mb-3 p-2 bg-red-900/20 backdrop-blur-sm border border-red-500/20 rounded-lg max-w-md w-full">

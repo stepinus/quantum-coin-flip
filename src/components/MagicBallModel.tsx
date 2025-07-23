@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useMemo } from 'react';
+import { useRef, useEffect, useMemo, useState } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -15,6 +15,79 @@ export function MagicBallModel({ isShaking, currentAnswer }: MagicBallModelProps
   const groupRef = useRef<THREE.Group>(null!);
   const { scene, materials } = useGLTF('/ball.glb', true);
   const { gl } = useThree();
+  
+  // State for animation management
+  const [isIdle, setIsIdle] = useState(true);
+  const [lastAnswerTime, setLastAnswerTime] = useState<number | null>(null);
+  const [shakeStartTime, setShakeStartTime] = useState<number | null>(null);
+  const [idleStartRotationY, setIdleStartRotationY] = useState(0);
+  const [idleStartTime, setIdleStartTime] = useState<number | null>(null);
+  const [isTurningToUser, setIsTurningToUser] = useState(false);
+  const [hasReachedUserPosition, setHasReachedUserPosition] = useState(false);
+  
+  // Track when shaking starts - first turn to user, then shake
+  useEffect(() => {
+    if (isShaking) {
+      setIsIdle(false);
+      // Check if ball is already facing user (rotation Y close to 0)
+      if (groupRef.current) {
+        const currentRotationY = groupRef.current.rotation.y % (Math.PI * 2);
+        const normalizedRotation = Math.abs(currentRotationY);
+        const isAlreadyFacingUser = normalizedRotation < 0.2 || normalizedRotation > (Math.PI * 2 - 0.2);
+        
+        if (isAlreadyFacingUser) {
+          // Already facing user, start shaking immediately
+          setHasReachedUserPosition(true);
+          setIsTurningToUser(false);
+          setShakeStartTime(Date.now());
+        } else {
+          // Need to turn to user first
+          setIsTurningToUser(true);
+          setHasReachedUserPosition(false);
+        }
+      }
+    } else {
+      // Reset states when shaking stops
+      setIsTurningToUser(false);
+      setHasReachedUserPosition(false);
+    }
+  }, [isShaking]);
+  
+  // Track when answer changes to reset idle timer
+  useEffect(() => {
+    if (currentAnswer && !isShaking) {
+      setLastAnswerTime(Date.now());
+      setIsIdle(false);
+      // Save the position when ball stops shaking and shows answer (facing user)
+      if (groupRef.current) {
+        setIdleStartRotationY(groupRef.current.rotation.y);
+      }
+    }
+  }, [currentAnswer, isShaking]);
+  
+  // Check if we should enter idle state
+  useEffect(() => {
+    if (!currentAnswer) {
+      // Initial state - page just loaded
+      setIsIdle(true);
+      setIdleStartRotationY(0);
+      setIdleStartTime(Date.now());
+      return;
+    }
+    
+    if (lastAnswerTime && !isShaking && !isIdle) {
+      const timer = setInterval(() => {
+        const timeSinceAnswer = Date.now() - lastAnswerTime;
+        if (timeSinceAnswer > 7000) { // 7 seconds
+          // Enter idle state only once (rotation position already saved when answer was shown)
+          setIdleStartTime(Date.now());
+          setIsIdle(true);
+        }
+      }, 1000);
+      
+      return () => clearInterval(timer);
+    }
+  }, [lastAnswerTime, isShaking, currentAnswer, isIdle]);
 
 
 
@@ -109,19 +182,97 @@ export function MagicBallModel({ isShaking, currentAnswer }: MagicBallModelProps
     return clonedScene;
   }, [scene, materials, gl]);
 
-  // Simple shake animation - just rotate the ball
+  // Animation logic for different states
   useFrame((state) => {
     if (!groupRef.current) return;
 
-    if (isShaking) {
-      // Simple rotation animation - 2 full rotations in random directions
-      const time = state.clock.elapsedTime;
-      groupRef.current.rotation.x = Math.sin(time * 2) * 0.3;
-      groupRef.current.rotation.y = Math.cos(time * 1) * 0.3;
-      groupRef.current.rotation.z = Math.sin(time * 0.5) * 0.2;
-    } else {
-      // Smooth return to neutral position
+    if (isShaking && isTurningToUser) {
+      // Phase 1: Turn to face user before shaking
+      const lerpFactor = 0.15; // Faster turn to user
+      const targetRotationY = 0; // Face user (front of the ball)
+      
+      // Return position to center while turning
+      groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, 0, lerpFactor);
+      groupRef.current.position.y = THREE.MathUtils.lerp(groupRef.current.position.y, 0, lerpFactor);
+      groupRef.current.position.z = 0;
+      
+      // Turn to face user
+      groupRef.current.rotation.x = THREE.MathUtils.lerp(groupRef.current.rotation.x, 0, lerpFactor);
+      groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRotationY, lerpFactor);
+      groupRef.current.rotation.z = THREE.MathUtils.lerp(groupRef.current.rotation.z, 0, lerpFactor);
+      
+      // Check if we've reached the user-facing position
+      const rotationDiff = Math.abs(groupRef.current.rotation.y - targetRotationY);
+      if (rotationDiff < 0.1) {
+        // Close enough to user position, start shaking
+        setHasReachedUserPosition(true);
+        setIsTurningToUser(false);
+        setShakeStartTime(Date.now());
+        // Save this position for later idle rotation
+        setIdleStartRotationY(targetRotationY);
+      }
+    } else if (isShaking && hasReachedUserPosition && shakeStartTime) {
+      // Phase 2: Shaking animation - movement along X and Y axes with decay
+      const currentTime = Date.now();
+      const timeElapsed = (currentTime - shakeStartTime) / 1000; // Convert to seconds
+      const shakeDuration = 3; // seconds
+      
+      // Calculate progress and decay factor
+      const shakeProgress = Math.min(timeElapsed / shakeDuration, 1);
+      const decayFactor = Math.max(0, 1 - shakeProgress);
+      
+      // Use animation time for smooth oscillations
+      const animTime = state.clock.elapsedTime;
+      
+      // Shaking movement with multiple frequencies for realistic effect
+      const shakeIntensity = 0.25 * decayFactor;
+      const fastShake = Math.sin(animTime * 15) * shakeIntensity;
+      const mediumShake = Math.cos(animTime * 8) * shakeIntensity * 0.7;
+      const slowShake = Math.sin(animTime * 3) * shakeIntensity * 0.5;
+      
+      // Apply position changes (not rotation)
+      groupRef.current.position.x = (fastShake + mediumShake) * 0.6;
+      groupRef.current.position.y = (Math.cos(animTime * 12) + slowShake) * shakeIntensity * 0.5;
+      groupRef.current.position.z = 0; // Keep Z position stable
+      
+      // Keep rotation stable during shaking (facing user)
       const lerpFactor = 0.1;
+      groupRef.current.rotation.x = THREE.MathUtils.lerp(groupRef.current.rotation.x, 0, lerpFactor);
+      groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, 0, lerpFactor);
+      groupRef.current.rotation.z = THREE.MathUtils.lerp(groupRef.current.rotation.z, 0, lerpFactor);
+    } else if (isIdle && idleStartTime) {
+      // Idle animation - rotation + floating effect
+      const currentTime = Date.now();
+      const idleElapsedTime = (currentTime - idleStartTime) / 1000; // Convert to seconds
+      const lerpFactor = 0.05; // Slower lerp for smooth transition
+      
+      // Continue rotation from saved position
+      const targetRotationY = idleStartRotationY + (idleElapsedTime * 0.2); // Slow rotation speed from saved position
+      
+      // Floating effect - slow up/down movement
+      const floatAmplitude = 0.3; // How high/low it moves
+      const floatSpeed = 1.5; // Speed of floating animation
+      const floatOffset = Math.sin(idleElapsedTime * floatSpeed) * floatAmplitude;
+      
+      // Return X position to center, add floating to Y
+      groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, 0, lerpFactor);
+      groupRef.current.position.y = floatOffset;
+      groupRef.current.position.z = 0;
+      
+      // Apply idle rotation
+      groupRef.current.rotation.x = THREE.MathUtils.lerp(groupRef.current.rotation.x, 0, lerpFactor);
+      groupRef.current.rotation.y = targetRotationY;
+      groupRef.current.rotation.z = THREE.MathUtils.lerp(groupRef.current.rotation.z, 0, lerpFactor);
+    } else {
+      // Answer shown state - smooth return to user-facing position
+      const lerpFactor = 0.1;
+      
+      // Return position to center
+      groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, 0, lerpFactor);
+      groupRef.current.position.y = THREE.MathUtils.lerp(groupRef.current.position.y, 0, lerpFactor);
+      groupRef.current.position.z = 0;
+      
+      // Stay facing user while showing answer (rotation Y = 0)
       groupRef.current.rotation.x = THREE.MathUtils.lerp(groupRef.current.rotation.x, 0, lerpFactor);
       groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, 0, lerpFactor);
       groupRef.current.rotation.z = THREE.MathUtils.lerp(groupRef.current.rotation.z, 0, lerpFactor);
@@ -168,7 +319,7 @@ export function MagicBallModel({ isShaking, currentAnswer }: MagicBallModelProps
         <primitive
           object={ballObject}
           scale={10}
-          rotation={[Math.PI / 2, 0, 0]}
+          rotation={[Math.PI / 2, Math.PI, 0]}
           position={[0, 0, 0]}
           castShadow
           receiveShadow
