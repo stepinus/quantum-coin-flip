@@ -3,34 +3,41 @@
 import { useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment } from '@react-three/drei';
+import { EffectComposer, Bloom, SMAA } from '@react-three/postprocessing';
+import { BlendFunction } from 'postprocessing';
+import * as THREE from 'three';
 import Link from 'next/link';
 import { MagicBallModel } from '@/components/MagicBallModel';
 
-// Magic 8 Ball answers
+// Magic 8 Ball answers - канонические 20 ответов
 const MAGIC_ANSWERS = [
-  // Positive answers
-  'Да, определенно',
-  'Без сомнения',
-  'Да',
-  'Скорее всего',
-  'Вполне возможно',
-  'Знаки говорят да',
-  'Да, попробуй еще раз',
-  'Мой ответ да',
-  'Можешь рассчитывать на это',
-  'Да, через некоторое время',
+  // Положительные (5)
+  'Бесспорно',
+  'Предрешено',
+  'Никаких сомнений',
+  'Определённо да',
+  'Можешь быть уверен в этом',
 
-  // Negative answers
-  'Мне кажется нет',
-  'Очень сомнительно',
-  'Не рассчитывай на это',
-  'Лучше не говорить сейчас',
-  'Не могу предсказать',
-  'Сконцентрируйся и спроси снова',
-  'Мой источник говорит нет',
+  // Нерешительно положительные (5)
+  'Мне кажется — «да»',
+  'Вероятнее всего',
+  'Хорошие перспективы',
+  'Знаки говорят — «да»',
+  'Да',
+
+  // Нейтральные (5)
+  'Пока не ясно, попробуй снова',
+  'Спроси позже',
+  'Лучше не рассказывать',
+  'Сейчас нельзя предсказать',
+  'Сконцентрируйся и спроси опять',
+
+  // Отрицательные (5)
+  'Даже не думай',
+  'Мой ответ — «нет»',
+  'По моим данным — «нет»',
   'Перспективы не очень хорошие',
-  'Нет',
-  'Определенно нет'
+  'Весьма сомнительно'
 ];
 
 
@@ -41,6 +48,8 @@ export default function MagicBallPage() {
   const [error, setError] = useState<string | null>(null);
   const [lastUsedApi, setLastUsedApi] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
+
+
 
   const askQuestion = async () => {
     if (isShaking) return;
@@ -105,8 +114,8 @@ export default function MagicBallPage() {
       // Shake animation duration - плавный переход к ответу
       // Сначала устанавливаем ответ, но он не будет отображаться пока isShaking=true
       setCurrentAnswer(selectedAnswer);
-      
-      // Затем через 3 секунды останавливаем тряску, что приведет к плавному показу ответа
+
+      // Затем через 3 секунды останавливаем тряску
       setTimeout(() => {
         setIsShaking(false);
       }, 3000);
@@ -131,7 +140,7 @@ export default function MagicBallPage() {
           >
             ← Назад
           </Link>
-          
+
           {/* Quantum Info */}
           <div className="text-right">
             <p className="text-black/70 text-xs font-medium">
@@ -139,7 +148,7 @@ export default function MagicBallPage() {
             </p>
             {lastUsedApi && (
               <p className="text-black/60 text-[10px]">
-                {lastUsedApi === 'ANU_BINARY' 
+                {lastUsedApi === 'ANU_BINARY'
                   ? 'Последняя генерация: Квантовый поток АНУ'
                   : 'Последняя генерация: Квантовый генератор LfD'
                 }
@@ -160,9 +169,26 @@ export default function MagicBallPage() {
             </div>
           </div>
         )}
-        <Canvas camera={{ position: [0, 0, 7.75], fov: 50 }} onCreated={() => setTimeout(() => setIsLoading(false), 1000)}>
-          {/* Нейтральное окружение */}
-          <Environment preset="city" />
+        <Canvas 
+          camera={{ position: [0, 0, 7.75], fov: 50 }} 
+          onCreated={() => setTimeout(() => setIsLoading(false), 1000)}
+          gl={{ 
+            antialias: true,
+            alpha: true,
+            powerPreference: "high-performance",
+            toneMapping: THREE.ACESFilmicToneMapping,
+            toneMappingExposure: 1.2,
+            outputColorSpace: THREE.SRGBColorSpace
+          }}
+          dpr={[1, 2]}
+          shadows
+        >
+          {/* Нейтральное окружение с улучшенными отражениями */}
+          <Environment 
+            preset="city" 
+            background={false}
+            environmentIntensity={1.2}
+          />
 
           {/* Серый туман */}
           <fog attach="fog" args={['#333333', 10, 40]} />
@@ -239,7 +265,11 @@ export default function MagicBallPage() {
             />
           )}
 
-          <MagicBallModel isShaking={isShaking} currentAnswer={currentAnswer} />
+          <MagicBallModel
+            key="magic-ball-model"
+            isShaking={isShaking}
+            currentAnswer={currentAnswer}
+          />
 
           <OrbitControls
             enabled={!isShaking}
@@ -251,6 +281,21 @@ export default function MagicBallPage() {
             minPolarAngle={Math.PI / 6}
             maxPolarAngle={Math.PI - Math.PI / 6}
           />
+
+          {/* Enhanced post-processing for better quality */}
+          <EffectComposer multisampling={4}>
+            {/* Enhanced anti-aliasing for smooth edges */}
+            <SMAA />
+
+            {/* Subtle bloom for magical glow */}
+            <Bloom
+              intensity={0.15}
+              luminanceThreshold={0.9}
+              luminanceSmoothing={0.95}
+              blendFunction={BlendFunction.ADD}
+              mipmapBlur
+            />
+          </EffectComposer>
         </Canvas>
       </div>
 
