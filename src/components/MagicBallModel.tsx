@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -15,14 +15,23 @@ export function MagicBallModel({ isShaking, currentAnswer }: MagicBallModelProps
   const groupRef = useRef<THREE.Group>(null!);
   const shakeStartTimeRef = useRef<number>(0);
   const clonedSceneRef = useRef<THREE.Group | null>(null);
-  const { scene, materials } = useGLTF('/ball.glb');
+  const [modelLoaded, setModelLoaded] = useState(false);
+  const [initialAnimationDone, setInitialAnimationDone] = useState(false);
+  const initialAnimationStartTimeRef = useRef<number>(Date.now());
+  const answerAnimationStartTimeRef = useRef<number>(0);
+  const prevAnswerRef = useRef<string>('');
+  const prevShakingRef = useRef<boolean>(false);
+  const { scene, materials } = useGLTF('/ball.glb', true); // true для приоритетной загрузки
 
   // Initialize cloned scene and materials only once
   useEffect(() => {
-    if (!clonedSceneRef.current) {
+    if (!clonedSceneRef.current && scene) {
       // Clone the scene to avoid material conflicts
       const clonedScene = scene.clone();
       clonedSceneRef.current = clonedScene;
+      
+      // Установим флаг, что модель загружена
+      setModelLoaded(true);
 
       // Apply proper materials for black glossy shell and transparent window
       const shellMaterial = materials['ball_1'] as THREE.MeshStandardMaterial;
@@ -92,15 +101,62 @@ export function MagicBallModel({ isShaking, currentAnswer }: MagicBallModelProps
     }
   }, [isShaking]);
 
-  // Enhanced shake animation with settling effect
+  // Отслеживаем изменение ответа для запуска анимации
+  useEffect(() => {
+    // Если ответ изменился с пустого на непустой и тряска закончилась
+    if (currentAnswer && !prevAnswerRef.current && !isShaking && prevShakingRef.current) {
+      answerAnimationStartTimeRef.current = Date.now();
+    }
+    
+    prevAnswerRef.current = currentAnswer;
+    prevShakingRef.current = isShaking;
+  }, [currentAnswer, isShaking]);
+
+  // Enhanced animations with initial spin, shake and answer appearance
   useFrame((state) => {
     if (!groupRef.current) return;
+    
+    const currentTime = Date.now();
+    
+    // 1. Анимация при входе на страницу - вращение вдоль оси Y (горизонтальное)
+    if (!initialAnimationDone) {
+      const elapsedTime = (currentTime - initialAnimationStartTimeRef.current) / 1000;
+      
+      if (elapsedTime < 3) {
+        // Начальное быстрое вращение с замедлением
+        const rotationSpeed = Math.max(0.1, 3 - elapsedTime) * 2;
+        groupRef.current.rotation.y += rotationSpeed * 0.03;
+        
+        // Добавляем небольшое колебание по другим осям для реалистичности
+        groupRef.current.rotation.x = Math.sin(elapsedTime * 2) * 0.05;
+        groupRef.current.rotation.z = Math.sin(elapsedTime * 3) * 0.03;
+      } else {
+        // Плавное затухание вращения
+        const dampingTime = Math.min(2, elapsedTime - 3);
+        const dampingFactor = Math.max(0, 1 - dampingTime / 2);
+        
+        if (dampingFactor > 0) {
+          // Затухающее вращение
+          groupRef.current.rotation.y += 0.2 * dampingFactor * 0.03;
+          groupRef.current.rotation.x = Math.sin(elapsedTime * 2) * 0.05 * dampingFactor;
+          groupRef.current.rotation.z = Math.sin(elapsedTime * 3) * 0.03 * dampingFactor;
+        } else {
+          // Анимация завершена
+          setInitialAnimationDone(true);
+          groupRef.current.rotation.x = 0;
+          groupRef.current.rotation.y = 0;
+          groupRef.current.rotation.z = 0;
+        }
+      }
+      
+      return; // Выходим, чтобы не выполнять другие анимации
+    }
 
+    // 2. Анимация тряски
     if (isShaking) {
-      const currentTime = Date.now();
       const elapsedTime = (currentTime - shakeStartTimeRef.current) / 1000; // Convert to seconds
 
-      // Only animate for 3 seconds as per requirement
+      // Плавная анимация тряски с затуханием
       if (elapsedTime < 3) {
         // Use different frequencies for each axis to create realistic shake
         const time = state.clock.elapsedTime;
@@ -121,29 +177,35 @@ export function MagicBallModel({ isShaking, currentAnswer }: MagicBallModelProps
         groupRef.current.position.x = Math.sin(time * 25) * 0.02 * intensity;
         groupRef.current.position.y = Math.sin(time * 30) * 0.02 * intensity;
       } else {
-        // Settling animation after shake stops
+        // Settling animation after shake stops - плавное затухание
         const settleTime = elapsedTime - 3;
-        if (settleTime < 0.5) {
+        if (settleTime < 1.0) { // Увеличиваем время затухания до 1 секунды
           // Gentle settling motion
-          const settleIntensity = Math.max(0, 1 - settleTime / 0.5);
-          groupRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 8) * 0.05 * settleIntensity;
-          groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 6) * 0.05 * settleIntensity;
-          groupRef.current.rotation.z = Math.sin(state.clock.elapsedTime * 10) * 0.03 * settleIntensity;
+          const settleIntensity = Math.max(0, 1 - settleTime / 1.0);
           
-          groupRef.current.position.x = Math.sin(state.clock.elapsedTime * 12) * 0.01 * settleIntensity;
-          groupRef.current.position.y = Math.sin(state.clock.elapsedTime * 15) * 0.01 * settleIntensity;
+          // Используем более плавные функции для затухания
+          const easeOutCubic = 1 - Math.pow(1 - settleIntensity, 3);
+          
+          groupRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 8) * 0.05 * easeOutCubic;
+          groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 6) * 0.05 * easeOutCubic;
+          groupRef.current.rotation.z = Math.sin(state.clock.elapsedTime * 10) * 0.03 * easeOutCubic;
+          
+          groupRef.current.position.x = Math.sin(state.clock.elapsedTime * 12) * 0.01 * easeOutCubic;
+          groupRef.current.position.y = Math.sin(state.clock.elapsedTime * 15) * 0.01 * easeOutCubic;
         } else {
-          // Fully settled - reset to neutral position
-          groupRef.current.rotation.x = 0;
-          groupRef.current.rotation.y = 0;
-          groupRef.current.rotation.z = 0;
-          groupRef.current.position.x = 0;
-          groupRef.current.position.y = 0;
-          groupRef.current.position.z = 0;
+          // Очень плавное возвращение к нейтральному положению
+          const lerpFactor = 0.05; // Уменьшаем фактор для более плавного перехода
+          groupRef.current.rotation.x = THREE.MathUtils.lerp(groupRef.current.rotation.x, 0, lerpFactor);
+          groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, 0, lerpFactor);
+          groupRef.current.rotation.z = THREE.MathUtils.lerp(groupRef.current.rotation.z, 0, lerpFactor);
+          
+          groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, 0, lerpFactor);
+          groupRef.current.position.y = THREE.MathUtils.lerp(groupRef.current.position.y, 0, lerpFactor);
+          groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, 0, lerpFactor);
         }
       }
     } else {
-      // Smoothly return to neutral position when not shaking
+      // 3. Плавное возвращение к нейтральному положению, когда нет тряски
       const lerpFactor = 0.1;
       groupRef.current.rotation.x = THREE.MathUtils.lerp(groupRef.current.rotation.x, 0, lerpFactor);
       groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, 0, lerpFactor);
@@ -155,9 +217,47 @@ export function MagicBallModel({ isShaking, currentAnswer }: MagicBallModelProps
     }
   });
 
+  // Убираем мельтешащие частицы вокруг шарика
+
   return (
     <group ref={groupRef}>
-      {clonedSceneRef.current && (
+      {/* Индикатор загрузки - показывается только когда модель не загружена */}
+      {!modelLoaded && (
+        <mesh position={[0, 0, 0]}>
+          <sphereGeometry args={[1, 16, 16]} />
+          <meshBasicMaterial 
+            color="#555555" 
+            wireframe={true}
+            transparent={true}
+            opacity={0.5}
+          />
+        </mesh>
+      )}
+      
+      {/* Нейтральное свечение вокруг шара */}
+      <mesh position={[0, 0, 0]} scale={10.2}>
+        <sphereGeometry args={[1, 32, 32]} />
+        <meshBasicMaterial 
+          color="#333333" 
+          transparent={true} 
+          opacity={0.08} 
+          side={THREE.BackSide}
+        />
+      </mesh>
+      
+      {/* Нейтральная подсветка для шара */}
+      <spotLight
+        position={[0, 5, 0]}
+        angle={0.6}
+        penumbra={0.9}
+        intensity={0.4}
+        color="#777777"
+        distance={15}
+        decay={2}
+        castShadow
+      />
+      
+      {modelLoaded && clonedSceneRef.current && (
         <primitive
           object={clonedSceneRef.current}
           scale={10} // Basic scaling as per design
@@ -172,7 +272,22 @@ export function MagicBallModel({ isShaking, currentAnswer }: MagicBallModelProps
       <AnswerDisplay
         answer={currentAnswer}
         visible={!isShaking && !!currentAnswer}
+        alwaysShowBackground={true}
       />
+      
+      {/* Нейтральная подсветка при появлении ответа */}
+      {!isShaking && currentAnswer && (
+        <spotLight
+          position={[0, 3, 2]}
+          angle={0.4}
+          penumbra={0.95}
+          intensity={0.5}
+          color="#aaaaaa"
+          distance={6}
+          decay={3}
+          castShadow
+        />
+      )}
     </group>
   );
 }

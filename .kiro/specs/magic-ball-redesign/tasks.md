@@ -41,30 +41,63 @@
   - Fine-tune animation timing and intensity
   - _Requirements: 2.1, 2.2, 5.1_
 
-- [ ] 7. Integrate quantum random number generation
+- [x] 7. Integrate quantum random number generation
   - Connect existing quantum API logic to the 3D Magic Ball
   - Ensure proper error handling for API failures
   - Implement answer selection using quantum randomness
   - Add API source tracking and display
   - _Requirements: 2.4, 4.1, 4.2, 4.3, 6.4_
 
-- [ ] 8. Optimize lighting and visual effects
+- [x] 8. Optimize lighting and visual effects
   - Fine-tune point lights for optimal text visibility
   - Add subtle glow effects around answer text
   - Ensure proper lighting during different animation states
   - Optimize light intensity and positioning
   - _Requirements: 3.2, 5.2_
 
-- [ ] 9. Add comprehensive error handling and user feedback
-  - Implement proper error states for quantum API failures
-  - Create user-friendly Russian error messages
-  - Add loading indicators during API calls
-  - Ensure UI remains functional when APIs fail
-  - _Requirements: 4.3, 6.3_
+- [x] 9. Enhance 3D scene environment and atmosphere
+  - Add dramatic shadows and depth to the scene
+  - Implement advanced lighting setup with multiple light sources
+  - Create atmospheric effects and ambient lighting
+  - Add flowing fog/mist effects around the magic ball
+  - Enhance scene composition and visual depth
+  - _Requirements: 5.2, 5.3_
 
-- [ ] 10. Final polish and performance optimization
+- [x] 10. Implement mystical minimalist UI redesign
+  - Remove white background container and borders for full-screen 3D experience
+  - Redesign page layout to make Canvas occupy 90% of viewport height
+  - Create minimal overlay UI at bottom with dark mystical styling
+  - Update color scheme to dark mystical colors (black, deep purple, dark blue)
+  - Remove unnecessary UI elements and instructions to create minimalist design
+  - _Requirements: 6.1, 6.2, 6.5_
+
+- [x] 11. Add mystical background and atmospheric effects to 3D scene
+  - Implement dark gradient or cosmic background using Environment or custom skybox
+  - Add fog/mist effects around the magic ball using Fog component
+  - Create floating particle system for mystical atmosphere
+  - Add subtle cosmic elements (stars, nebula effects) if appropriate
+  - Ensure background enhances mystical mood without distracting from ball
+  - _Requirements: 7.1, 7.3_
+
+- [x] 12. Enhance lighting system for dramatic mystical atmosphere
+  - Reduce ambient light intensity to create more dramatic shadows
+  - Add colored point lights (purple, blue) for mystical ambiance
+  - Implement rim lighting around the magic ball for mystical glow
+  - Add dynamic lighting effects that respond to shake animation
+  - Create dramatic spotlight effects when answer appears
+  - _Requirements: 7.2, 7.4, 7.5_
+
+- [ ] 13. Add comprehensive error handling and user feedback
+  - Implement proper error states for quantum API failures
+  - Create user-friendly Russian error messages with mystical styling
+  - Add loading indicators during API calls with dark theme
+  - Ensure UI remains functional when APIs fail
+  - _Requirements: 4.3, 6.4_
+
+- [ ] 14. Final polish and performance optimization
   - Implement proper Three.js object disposal and cleanup
   - Add React.memo optimization where needed
   - Test memory usage and optimize model loading
   - Fine-tune all animations and transitions
+  - Ensure mystical effects don't impact performance
   - _Requirements: 5.3_

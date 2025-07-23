@@ -8,19 +8,17 @@
 
 ### Component Structure
 ```
-MagicBallPage (Main Component)
-├── Navigation (Link back to home)
-├── UI Container (Tailwind styled wrapper)
-│   ├── Header (Title and description)
-│   ├── Canvas (React Three Fiber scene)
-│   │   ├── MagicBallModel (3D model component)
-│   │   ├── AnswerDisplay (3D text in ball window)
-│   │   ├── Lighting (Scene lighting setup)
-│   │   └── Camera Controls (OrbitControls)
-│   ├── AnswerText (2D text display below canvas)
-│   ├── ActionButton (Shake button)
-│   ├── ErrorDisplay (Error messages)
-│   └── Instructions (Usage guide)
+MagicBallPage (Main Component - Minimalist Design)
+├── Navigation (Minimal, semi-transparent)
+├── Full-Screen Canvas (React Three Fiber scene - 90% of viewport)
+│   ├── MagicBallModel (3D model component)
+│   ├── AnswerDisplay (3D text in ball window)
+│   ├── MysticalLighting (Dramatic lighting setup)
+│   ├── MysticalBackground (Fog, particles, cosmic elements)
+│   └── Camera Controls (OrbitControls)
+├── Minimal UI Overlay (Bottom 10% of screen)
+│   ├── ActionButton (Shake button - mystical styling)
+│   └── ErrorDisplay (Minimal error messages)
 ```
 
 ### State Management
@@ -67,11 +65,21 @@ interface AnswerDisplayProps {
 - Apply proper styling (white text on blue background)
 
 ### Lighting System
-**Scene Lighting:**
-- Ambient Light: Low intensity (0.2) for overall illumination
-- Directional Light: Main scene lighting with shadows
-- Point Lights: Multiple lights for answer text visibility
-- Spot Light: Focused lighting when answer is displayed
+**Mystical Scene Lighting:**
+- Ambient Light: Very low intensity (0.1) for mysterious atmosphere
+- Directional Light: Dramatic main lighting with strong shadows
+- Point Lights: Multiple colored lights (purple, blue) for mystical ambiance
+- Spot Light: Focused dramatic lighting when answer is displayed
+- Rim Lighting: Edge lighting to create mystical glow around the ball
+- Atmospheric Lighting: Fog/mist illumination for depth
+
+### Background and Environment
+**Mystical Environment:**
+- Dark gradient background (black to deep purple/blue)
+- Particle system for floating mystical elements
+- Fog/mist effects around the magic ball
+- Optional: Subtle star field or cosmic background
+- Minimal UI elements to maximize 3D scene visibility
 
 ### Animation System
 **Shake Animation:**

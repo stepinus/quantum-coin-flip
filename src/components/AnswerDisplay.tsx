@@ -2,204 +2,216 @@
 
 import { Text } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import * as THREE from 'three';
 
 interface AnswerDisplayProps {
   answer: string;
   visible: boolean;
+  alwaysShowBackground?: boolean;
 }
 
-export function AnswerDisplay({ answer, visible }: AnswerDisplayProps) {
+export function AnswerDisplay({ answer, visible, alwaysShowBackground = true }: AnswerDisplayProps) {
   // Always show the blue background, but only show text when visible and answer exists
   const showText = visible && !!answer;
   
-  // Animation state
-  const [animationStartTime, setAnimationStartTime] = useState<number>(0);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const textGroupRef = useRef<THREE.Group>(null);
+  // Состояние для анимации появления ответа
+  const [answerAnimationStarted, setAnswerAnimationStarted] = useState(false);
+  const answerAnimationTimeRef = useRef<number>(0);
+  const textGroupRef = useRef<THREE.Group>(null!);
+  const prevVisibleRef = useRef<boolean>(false);
   
-  // Start animation when text becomes visible
+  // Запускаем анимацию при появлении ответа
   useEffect(() => {
-    if (showText && !isAnimating) {
-      setAnimationStartTime(Date.now());
-      setIsAnimating(true);
-    } else if (!showText) {
-      setIsAnimating(false);
-      setAnimationStartTime(0);
+    if (visible && !prevVisibleRef.current && answer) {
+      setAnswerAnimationStarted(true);
+      answerAnimationTimeRef.current = Date.now();
     }
-  }, [showText]); // Remove isAnimating from dependencies to prevent loop
+    prevVisibleRef.current = visible;
+  }, [visible, answer]);
   
-  // Calculate text wrapping for long answers (only when we have an answer)
-  let lines: string[] = [];
-  let fontSize = 0.15;
+  // Референс для пульсирующего свечения
+  const pulsingGlowRef = useRef<THREE.Mesh>(null!);
   
-  if (answer) {
-    const maxLineLength = 15; // Approximate characters per line that fit in window
-    const words = answer.split(' ');
-    let currentLine = '';
-
-    words.forEach(word => {
-      if ((currentLine + word).length <= maxLineLength) {
-        currentLine += (currentLine ? ' ' : '') + word;
-      } else {
-        if (currentLine) {
-          lines.push(currentLine);
-        }
-        currentLine = word;
-      }
-    });
-    
-    if (currentLine) {
-      lines.push(currentLine);
-    }
-
-    // Calculate font size based on text length and number of lines
-    const baseFontSize = 0.15;
-    const lengthFactor = Math.min(1, 25 / answer.length);
-    const lineFactor = Math.min(1, 3 / lines.length);
-    fontSize = baseFontSize * lengthFactor * lineFactor;
-  }
-
-  // Simple and natural text appearance animation
+  // Анимация появления текста и пульсация свечения
   useFrame((state) => {
-    if (isAnimating && textGroupRef.current && animationStartTime > 0) {
-      const currentTime = Date.now();
-      const elapsedTime = (currentTime - animationStartTime) / 1000; // Convert to seconds
-      const animationDuration = 2.5; // 2.5 seconds for full animation
+    // Пульсация свечения экрана
+    if (pulsingGlowRef.current && pulsingGlowRef.current.material) {
+      const material = pulsingGlowRef.current.material as THREE.MeshBasicMaterial;
+      const pulseFactor = Math.sin(state.clock.elapsedTime * 1.5) * 0.1 + 0.3; // Пульсация от 0.2 до 0.4
+      material.opacity = pulseFactor;
+    }
+    
+    // Анимация появления текста
+    if (!textGroupRef.current || !answerAnimationStarted) return;
+    
+    const elapsedTime = (Date.now() - answerAnimationTimeRef.current) / 1000;
+    const animationDuration = 1.5; // Длительность анимации в секундах
+    
+    if (elapsedTime < animationDuration) {
+      // Начальная фаза - рост из маленького размера
+      const growthPhase = Math.min(1, elapsedTime / 0.8);
+      const scale = THREE.MathUtils.lerp(0.1, 1, growthPhase);
       
-      if (elapsedTime < animationDuration) {
-        // Calculate animation progress (0 to 1)
-        const progress = Math.min(elapsedTime / animationDuration, 1);
-        
-        // Smooth easing function
-        const easeOut = 1 - Math.pow(1 - progress, 3);
-        
-        // Apply simple animation to each text element
-        textGroupRef.current.children.forEach((child, index) => {
-          if (child instanceof THREE.Group || child instanceof THREE.Mesh) {
-            // Store original position for reference
-            if (!child.userData.originalY) {
-              child.userData.originalY = child.position.y;
-            }
-            
-            // Keep text in center - no movement
-            child.position.x = 0;
-            child.position.y = child.userData.originalY;
-            
-            // Scale effect - text starts as tiny point and grows to normal size
-            const scaleProgress = easeOut;
-            const baseScale = 0.05 + scaleProgress * 0.95; // Start from 0.05, grow to 1.0
-            child.scale.setScalar(baseScale);
-            
-            // Simple rotation effect around Z axis
-            const rotationIntensity = (1 - easeOut) * Math.PI * 2; // 2 full rotations, reduces to 0
-            const staggeredRotation = index * 0.2; // Slight stagger between lines
-            child.rotation.z = rotationIntensity + staggeredRotation;
-            
-            // Fade-in effect with blur simulation
-            const opacityProgress = Math.pow(easeOut, 0.5); // Smooth fade in
-            
-            // Apply opacity to materials
-            child.traverse((grandChild) => {
-              if (grandChild instanceof THREE.Mesh && grandChild.material) {
-                const material = grandChild.material as THREE.Material;
-                if ('opacity' in material) {
-                  material.transparent = true;
-                  (material as any).opacity = opacityProgress;
-                }
-              }
-            });
-          }
-        });
-      } else {
-        // Animation complete - reset to final state
-        textGroupRef.current.children.forEach((child) => {
-          if (child instanceof THREE.Group || child instanceof THREE.Mesh) {
-            child.position.x = 0;
-            child.position.y = child.userData.originalY || child.position.y;
-            child.scale.setScalar(1);
-            child.rotation.z = 0;
-            
-            child.traverse((grandChild) => {
-              if (grandChild instanceof THREE.Mesh && grandChild.material) {
-                const material = grandChild.material as THREE.Material;
-                if ('opacity' in material) {
-                  (material as any).opacity = 1;
-                }
-              }
-            });
-          }
-        });
-        
-        setIsAnimating(false);
+      // Вращение текста по часовой стрелке (отрицательное значение для Z)
+      const rotationPhase = Math.min(1, elapsedTime / animationDuration);
+      // Используем ось Z для вращения в плоскости экрана (по часовой стрелке)
+      const rotationZ = (1 - rotationPhase) * Math.PI * -1; // Половина оборота по часовой стрелке
+      
+      // Применяем анимацию
+      textGroupRef.current.scale.set(scale, scale, scale);
+      textGroupRef.current.rotation.z = rotationZ;
+      
+      // Небольшое покачивание для эффекта "пружины"
+      if (growthPhase > 0.8) {
+        const bounce = Math.sin((elapsedTime - 0.8) * 15) * 0.1 * (1 - (elapsedTime - 0.8) / 0.7);
+        textGroupRef.current.scale.set(scale + bounce, scale + bounce, scale + bounce);
       }
+    } else {
+      // Анимация завершена
+      textGroupRef.current.scale.set(1, 1, 1);
+      textGroupRef.current.rotation.z = 0;
+      setAnswerAnimationStarted(false);
     }
   });
 
+  // Упрощенная логика разбиения текста на строки
+  let lines: string[] = [];
+  
+  if (answer) {
+    // Максимальная длина строки
+    const maxLineLength = 12;
+    
+    // Разбиваем текст на слова
+    const words = answer.split(' ');
+    let currentLine = '';
+    
+    // Формируем строки
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i];
+      
+      // Если слово помещается в текущую строку
+      if ((currentLine + word).length <= maxLineLength) {
+        currentLine += (currentLine ? ' ' : '') + word;
+      } else {
+        // Если строка не пустая, добавляем её в массив
+        if (currentLine) {
+          lines.push(currentLine);
+        }
+        // Начинаем новую строку с текущего слова
+        currentLine = word;
+      }
+    }
+    
+    // Добавляем последнюю строку, если она не пустая
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+  }
+  
+  // Фиксированный размер шрифта в зависимости от количества строк
+  let fontSize = 0.12;
+  if (lines.length > 2) {
+    fontSize = 0.1;
+  }
+  if (lines.length > 3) {
+    fontSize = 0.08;
+  }
+  
+  // Фиксированное расстояние между строками
+  const lineSpacing = 0.15;
+
   return (
     <group position={[0, -0.15, 1.45]} rotation={[0, 0, 0]}>
-      {/* Blue circular background for classic Magic 8 Ball appearance - ALWAYS VISIBLE */}
+      {/* Глубокий мистический синий фон с эффектом свечения - без рамки */}
       <mesh position={[0, 0.1, -0.05]}>
         <circleGeometry args={[0.6, 32]} />
+        <meshStandardMaterial 
+          color="#0a1128" 
+          emissive="#1e40af"
+          emissiveIntensity={0.8}
+          metalness={0.2}
+          roughness={0.3}
+          transparent={true} 
+          opacity={0.98}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      
+      {/* Внутреннее яркое свечение - создает эффект глубины */}
+      <mesh position={[0, 0.1, -0.04]}>
+        <circleGeometry args={[0.55, 32]} />
         <meshBasicMaterial 
           color="#1e40af" 
           transparent={true} 
-          opacity={0.9}
+          opacity={0.6}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      
+      {/* Внутреннее свечение - без видимой рамки */}
+      <mesh position={[0, 0.1, -0.055]}>
+        <circleGeometry args={[0.61, 32]} />
+        <meshBasicMaterial 
+          color="#1e3a8a" 
+          transparent={true} 
+          opacity={0.4}
           side={THREE.DoubleSide}
         />
       </mesh>
 
-      {/* Render text only when showText is true - each line in separate group for individual animation */}
+      {/* Группа для текста с анимацией появления */}
       {showText && (
-        <group ref={textGroupRef} position={[0, 0.08, -0.02]}>
-          {lines.map((line, index) => (
-            <group 
-              key={index}
-              position={[
-                0, // Center horizontally
-                (lines.length - 1) * fontSize * 0.6 - index * fontSize * 1.2, // Stack vertically
-                0 // Relative to parent group position
-              ]}
-            >
+        <group 
+          position={[0, 0.1, -0.02]} 
+          ref={textGroupRef}
+        >
+          {lines.map((line, index) => {
+            // Вычисляем вертикальное смещение для каждой строки
+            // Первая строка (index 0) будет наверху, последняя - внизу
+            const verticalOffset = (lines.length - 1) / 2 - index;
+            
+            return (
               <Text
+                key={index}
                 fontSize={fontSize}
                 color="white"
                 anchorX="center"
                 anchorY="middle"
-                position={[0, 0, 0]}
+                position={[
+                  0, // По центру по горизонтали
+                  verticalOffset * lineSpacing, // Вертикальное смещение
+                  0 // На одной глубине
+                ]}
                 maxWidth={0.8}
                 textAlign="center"
               >
                 {line}
               </Text>
-            </group>
-          ))}
+            );
+          })}
         </group>
       )}
 
-      {/* Additional point lights for text illumination - always present for consistent lighting */}
+      {/* Постоянное свечение экрана */}
       <pointLight 
-        position={[0, 0, 0.5]} 
-        intensity={2} 
-        color="white"
-        distance={3}
+        position={[0, 0, 0.3]} 
+        intensity={0.3}
+        color="#3b82f6"
+        distance={1.2}
         decay={2}
       />
-      <pointLight 
-        position={[0.5, 0.5, 0.3]} 
-        intensity={1.5} 
-        color="white"
-        distance={2}
-        decay={2}
-      />
-      <pointLight 
-        position={[-0.5, -0.5, 0.3]} 
-        intensity={1.5} 
-        color="white"
-        distance={2}
-        decay={2}
-      />
+      
+      {/* Дополнительный свет для текста - только когда есть ответ */}
+      {showText && (
+        <pointLight 
+          position={[0, 0, 0.2]} 
+          intensity={0.25}
+          color="#ffffff"
+          distance={0.8}
+          decay={2}
+        />
+      )}
     </group>
   );
 }
