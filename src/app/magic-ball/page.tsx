@@ -9,8 +9,8 @@ import * as THREE from 'three';
 import Link from 'next/link';
 import { MagicBallModel } from '@/components/MagicBallModel';
 
-// Magic 8 Ball answers - канонические 20 ответов
-const MAGIC_ANSWERS = [
+// Magic 8 Ball answers - разделены на квантовые и fallback
+const QUANTUM_ANSWERS = [
   // Положительные (5)
   'Бесспорно',
   'Предрешено',
@@ -25,19 +25,21 @@ const MAGIC_ANSWERS = [
   'Знаки говорят — «да»',
   'Да',
 
-  // Нейтральные (5)
-  'Пока не ясно, попробуй снова',
-  'Спроси позже',
-  'Лучше не рассказывать',
-  'Сейчас нельзя предсказать',
-  'Сконцентрируйся и спроси опять',
-
   // Отрицательные (5)
   'Даже не думай',
   'Мой ответ — «нет»',
   'По моим данным — «нет»',
   'Перспективы не очень хорошие',
   'Весьма сомнительно'
+];
+
+// Ответы для ситуации когда квантовые API недоступны
+const FALLBACK_ANSWERS = [
+  'Пока не ясно, попробуй снова',
+  'Спроси позже', 
+  'Лучше не рассказывать',
+  'Сейчас нельзя предсказать',
+  'Сконцентрируйся и спроси опять'
 ];
 
 
@@ -61,6 +63,7 @@ export default function MagicBallPage() {
     try {
       let randomNum: number;
       let apiUsed = '';
+      let quantumApiWorking = false;
 
       // Use the same quantum random sources as coin flip
       try {
@@ -75,6 +78,7 @@ export default function MagicBallPage() {
             randomNum = parseInt(binaryData, 2);
             apiUsed = 'ANU Binary Stream';
             setLastUsedApi('ANU_BINARY');
+            quantumApiWorking = true;
           } else {
             throw new Error('Invalid binary response');
           }
@@ -95,6 +99,7 @@ export default function MagicBallPage() {
               randomNum = lfdData.data[0];
               apiUsed = 'LfD QRNG (fallback)';
               setLastUsedApi('LfD');
+              quantumApiWorking = true;
             } else {
               throw new Error('Invalid LfD response');
             }
@@ -102,12 +107,23 @@ export default function MagicBallPage() {
             throw new Error('LfD API failed');
           }
         } catch {
-          throw new Error('Все квантовые API недоступны');
+          // Квантовые API недоступны - используем fallback ответы
+          quantumApiWorking = false;
+          randomNum = Math.floor(Math.random() * FALLBACK_ANSWERS.length);
+          apiUsed = 'Fallback (квантовые API недоступны)';
+          setLastUsedApi('FALLBACK');
         }
       }
 
-      // Select answer based on quantum random number
-      const selectedAnswer = MAGIC_ANSWERS[randomNum % MAGIC_ANSWERS.length];
+      // Select answer based on API availability
+      let selectedAnswer: string;
+      if (quantumApiWorking) {
+        // Квантовые API работают - выбираем из основных ответов
+        selectedAnswer = QUANTUM_ANSWERS[randomNum % QUANTUM_ANSWERS.length];
+      } else {
+        // Квантовые API недоступны - выбираем fallback ответы
+        selectedAnswer = FALLBACK_ANSWERS[randomNum];
+      }
 
       console.log(`Magic 8 Ball answer generated using: ${apiUsed}`);
 
@@ -121,8 +137,14 @@ export default function MagicBallPage() {
       }, 3000);
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Произошла неизвестная ошибка');
-      setIsShaking(false);
+      // В случае критической ошибки показываем один из fallback ответов
+      const fallbackIndex = Math.floor(Math.random() * FALLBACK_ANSWERS.length);
+      setCurrentAnswer(FALLBACK_ANSWERS[fallbackIndex]);
+      setError('Квантовые источники временно недоступны');
+      
+      setTimeout(() => {
+        setIsShaking(false);
+      }, 3000);
     }
   };
 
