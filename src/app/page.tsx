@@ -2,11 +2,15 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import MagicBallPage from './magic-ball/page';
 
 type CoinSide = 'heads' | 'tails';
 
+// Check environment variable for feature toggle
+const showMagicBallOnHomepage = process.env.NEXT_PUBLIC_SHOW_MAGIC_BALL_ON_HOMEPAGE === 'true';
 
-export default function QuantumCoinFlip() {
+
+function QuantumCoinFlip() {
   const [isFlipping, setIsFlipping] = useState(false);
   const [result, setResult] = useState<CoinSide | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -154,12 +158,14 @@ export default function QuantumCoinFlip() {
       {/* Navigation */}
       <nav className="p-4">
         <div className="flex gap-4">
-          <Link
-            href="/magic-ball"
-            className="inline-block px-4 py-2 bg-white/10 backdrop-blur-md rounded-lg text-white hover:bg-white/20 transition-colors"
-          >
-            🎱 Магический Шар 
-          </Link>
+          {!showMagicBallOnHomepage && (
+            <Link
+              href="/magic-ball"
+              className="inline-block px-4 py-2 bg-white/10 backdrop-blur-md rounded-lg text-white hover:bg-white/20 transition-colors"
+            >
+              🎱 Магический Шар 
+            </Link>
+          )}
         </div>
       </nav>
 
@@ -298,4 +304,14 @@ export default function QuantumCoinFlip() {
       </div>
     </div>
   );
+}
+
+export default function HomePage() {
+  // If environment variable is set, show magic ball instead of coin flip
+  if (showMagicBallOnHomepage) {
+    return <MagicBallPage hideBackButton={true} />;
+  }
+  
+  // Otherwise show the default coin flip
+  return <QuantumCoinFlip />;
 }
