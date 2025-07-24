@@ -17,8 +17,6 @@ interface BabylonScene {
 
 export default function BabylonBallPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const sceneRef = useRef<BabylonScene | null>(null);
-  const engineRef = useRef<BabylonEngine | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

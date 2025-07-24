@@ -309,7 +309,7 @@ function QuantumCoinFlip() {
 export default function HomePage() {
   // If environment variable is set, show magic ball instead of coin flip
   if (showMagicBallOnHomepage) {
-    return <MagicBallPage hideBackButton={true} />;
+    return <MagicBallPage />;
   }
   
   // Otherwise show the default coin flip

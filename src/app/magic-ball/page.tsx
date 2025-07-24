@@ -44,7 +44,7 @@ const FALLBACK_ANSWERS = [
 
 
 
-export default function MagicBallPage({ hideBackButton = false }: { hideBackButton?: boolean } = {}) {
+export default function MagicBallPage() {
   const [isShaking, setIsShaking] = useState(false);
   const [currentAnswer, setCurrentAnswer] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -156,15 +156,14 @@ export default function MagicBallPage({ hideBackButton = false }: { hideBackButt
       <div className="absolute top-0 left-0 right-0 z-10 flex flex-col">
         {/* Navigation */}
         <nav className="p-4 flex justify-between items-center">
-          {!hideBackButton && (
+          {/* {!hideBackButton && (
             <Link
               href="/"
               className="inline-block px-3 py-2 bg-black/20 backdrop-blur-sm rounded-lg text-white/60 hover:text-white/90 hover:bg-black/30 transition-all text-xs"
             >
               ← Назад
             </Link>
-          )}
-          {hideBackButton && <div></div>} {/* Spacer for layout */}
+          )} */}
 
           {/* Quantum Info */}
           <div className="text-right">
